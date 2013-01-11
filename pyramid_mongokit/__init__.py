@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
 import logging
-from urlparse import urlparse
 
 import mongokit
 
@@ -12,12 +11,14 @@ from zope.interface import Interface
 
 log = logging.getLogger(__name__)
 
-__all__ = ['register_document', 'mongo_db', 'mongo_connection']
+__all__ = ['register_document', 'mongo_db', 'mongo_connection',
+           'IMongoConnection']
 
 
 def includeme(config):
     log.info('Configure mongo...')
-    os.environ['MONGO_DB_NAME'] = urlparse(os.environ['MONGO_URI']).path[1:]
+    if 'MONGO_DB_NAME' not in os.environ:
+        raise KeyError('No MONGO_DB_NAME os.environ.')
     connection = MongoConnection(
         os.environ['MONGO_URI'],
         auto_start_request=False,
@@ -56,7 +57,6 @@ def mongo_db(request):
 
 
 def begin_request(event):
-    """"""
     event.request.mongo_connection.start_request()
     event.request.add_finished_callback(end_request)
 

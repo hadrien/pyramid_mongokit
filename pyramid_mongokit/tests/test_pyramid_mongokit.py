@@ -56,3 +56,11 @@ class TestPyramidMongokit(unittest.TestCase):
         request = mock.Mock()
 
         end_request(request)
+
+    @mock.patch('os.environ')
+    def test_no_db_name(self, env):
+        from pyramid_mongokit import includeme
+        env.__getitem__.side_effect = KeyError()
+
+        with self.assertRaises(KeyError):
+            includeme(mock.Mock())
