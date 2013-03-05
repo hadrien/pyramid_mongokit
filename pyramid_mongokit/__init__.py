@@ -36,7 +36,14 @@ def includeme(config):
 
 
 def register_document(registry, document_cls):
-    registry.getUtility(IMongoConnection).register(document_cls)
+    log.info('Registering collection %s on mongokit connection.',
+             document_cls.__collection__)
+    conn = registry.getUtility(IMongoConnection)
+    conn.register(document_cls)
+    db = getattr(conn, os.environ['MONGO_DB_NAME'])
+    document_cls.generate_index(db[document_cls.__collection__])
+    log.debug('Registered collection %s on mongokit connection.',
+              document_cls.__collection__)
 
 
 class IMongoConnection(Interface):

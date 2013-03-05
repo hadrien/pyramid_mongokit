@@ -18,8 +18,9 @@ class TestPyramidMongokit(unittest.TestCase):
     def test_register_document(self):
         from pyramid_mongokit import register_document
 
-        registry = mock.Mock()
+        registry = mock.MagicMock()
         document_cls = mock.Mock()
+        document_cls.__collection__ = 'test_document'
 
         register_document(registry, document_cls)
 
