@@ -7,6 +7,14 @@ import mock
 
 class TestPyramidMongokit(unittest.TestCase):
 
+    def setUp(self):
+        os.environ['MONGO_URI'] = 'mongodb://localhost'
+        os.environ['MONGO_DB_NAME'] = 'pyramid_mongokit'
+
+    def tearDown(self):
+        del os.environ['MONGO_URI']
+        del os.environ['MONGO_DB_NAME']
+
     def test_includeme(self):
         from pyramid.config import Configurator
         from pyramid_mongokit import includeme
@@ -40,7 +48,7 @@ class TestPyramidMongokit(unittest.TestCase):
         request = mock.Mock()
 
         self.assertEqual(
-            getattr(request.mongo_connection, os.environ['MONGO_DB_NAME']),
+            request.mongo_connection.db,
             mongo_db(request)
             )
 
