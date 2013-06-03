@@ -4,6 +4,8 @@ import logging
 
 import mongokit
 
+from pymongo import ReadPreference
+
 from pyramid.decorator import reify
 from pyramid.events import NewRequest
 
@@ -25,6 +27,7 @@ def includeme(config):
             '%s' % os.environ['MONGO_URI'],
             auto_start_request=False,
             tz_aware=True,
+            read_preference=ReadPreference.SECONDARY_PREFERRED,
             )
         config.add_request_method(mongo_db, 'mongo_db', reify=True)
     else:
@@ -33,6 +36,7 @@ def includeme(config):
             os.environ['MONGO_URI'],
             auto_start_request=False,
             tz_aware=True,
+            read_preference=ReadPreference.SECONDARY_PREFERRED,
             )
         config.add_request_method(mongo_db, 'get_mongo_db')
 
@@ -67,8 +71,10 @@ class MongoConnection(mongokit.Connection):
 @implementer(IMongoConnection)
 class SingleDbConnection(MongoConnection):
 
-    def __init__(self, db_name, db_prefix, *args, **kwargs):
-        super(SingleDbConnection, self).__init__(db_prefix, *args, **kwargs)
+    def __init__(self, db_name, db_prefix, uri, *args, **kwargs):
+        uri = '%s/%s%s' % (uri, db_prefix, db_name)
+        super(SingleDbConnection, self).__init__(db_prefix, uri, *args,
+                                                 **kwargs)
         self.db_name = db_name
 
     @reify
