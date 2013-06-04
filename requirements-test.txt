@@ -1,0 +1,7 @@
+coverage
+mock
+nose
+nosexcover
+webtest
+waitress
+yanc
