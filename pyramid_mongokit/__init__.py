@@ -67,6 +67,10 @@ class MongoConnection(mongokit.Connection):
         collection = collection if collection else document_cls.__collection__
         document_cls.generate_index(self.get_db(db_name)[collection])
 
+    def prefixed_database_names(self):
+        return (name for name in self.database_names()
+                if name.startswith(self.db_prefix))
+
 
 @implementer(IMongoConnection)
 class SingleDbConnection(MongoConnection):

@@ -23,7 +23,9 @@ class TestMongoConnection(unittest.TestCase):
     def tearDownClass(cls):
         del os.environ['MONGO_URI']
         del os.environ['MONGO_DB_PREFIX']
-        cls.mongo.drop_database('pm_test_games')
+        for name in cls.mongo.database_names():
+            if name.startswith('pm_test'):
+                cls.mongo.drop_database(name)
 
     @classmethod
     def get_example_config(cls):
@@ -65,6 +67,10 @@ class TestMongoConnection(unittest.TestCase):
 
         self.assertEqual(self.mongo['pm_test_slot'],
                          mongo_db(request, db_name='slot'))
+
+    def test_prefixed_database_name(self):
+        self.assertEqual([u'pm_test_another', u'pm_test_games'],
+                         list(self.mongo.prefixed_database_names()))
 
 
 class TestSingleDbConnection(unittest.TestCase):

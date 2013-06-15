@@ -65,3 +65,5 @@ def includeme_mongo_connection(config):
                    collection='bingo')
     generate_index(config.registry, UserGame, db_name='games',
                    collection='scrabble')
+
+    generate_index(config.registry, User, db_name='another')
