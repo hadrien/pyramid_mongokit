@@ -3,6 +3,8 @@ import os
 import unittest
 
 import mock
+import pymongo
+from pyramid.config import Configurator
 
 
 class TestPyramidMongokit(unittest.TestCase):
@@ -16,7 +18,6 @@ class TestPyramidMongokit(unittest.TestCase):
         del os.environ['MONGO_DB_NAME']
 
     def test_includeme(self):
-        from pyramid.config import Configurator
         from pyramid_mongokit import includeme
 
         config = Configurator(settings={})
@@ -73,3 +74,17 @@ class TestPyramidMongokit(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             includeme(mock.Mock())
+
+    @mock.patch('pymongo.mongo_client.MongoClient.__init__')
+    def test_uri_with_params(self, m_client):
+        os.environ['MONGO_URI'] = 'mongodb://localhost?replicaSet=tests'
+        config = Configurator(settings={})
+
+        config.include('pyramid_mongokit')
+
+        m_client.assert_called_once_with(
+            'mongodb://localhost/pyramid_mongokit?replicaSet=tests',
+            # this will break if pymongo internals change, but it's the
+            # simplest way to write a regression test that makes sense for #2
+            None, 10, dict, True, True, auto_start_request=False, safe=False,
+            read_preference=pymongo.ReadPreference.SECONDARY_PREFERRED)
