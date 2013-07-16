@@ -7,7 +7,7 @@ import pymongo
 from pyramid.config import Configurator
 
 
-class TestPyramidMongokit(unittest.TestCase):
+class Test(unittest.TestCase):
 
     def setUp(self):
         os.environ['MONGO_URI'] = 'mongodb://localhost'
@@ -75,7 +75,7 @@ class TestPyramidMongokit(unittest.TestCase):
         with self.assertRaises(KeyError):
             includeme(mock.Mock())
 
-    @mock.patch('pymongo.mongo_client.MongoClient.__init__')
+    @mock.patch('pyramid_mongokit.mongokit.Connection.__init__')
     def test_uri_with_params(self, m_client):
         os.environ['MONGO_URI'] = 'mongodb://localhost?replicaSet=tests'
         config = Configurator(settings={})
@@ -86,5 +86,5 @@ class TestPyramidMongokit(unittest.TestCase):
             'mongodb://localhost/pyramid_mongokit?replicaSet=tests',
             # this will break if pymongo internals change, but it's the
             # simplest way to write a regression test that makes sense for #2
-            None, 10, dict, True, True, auto_start_request=False, safe=False,
+            auto_start_request=False, tz_aware=True,
             read_preference=pymongo.ReadPreference.SECONDARY_PREFERRED)
