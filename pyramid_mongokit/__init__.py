@@ -24,7 +24,7 @@ def includeme(config):
         connection = SingleDbConnection(
             os.environ['MONGO_DB_NAME'],
             db_prefix,
-            '%s' % os.environ['MONGO_URI'],
+            os.environ['MONGO_URI'],
             auto_start_request=False,
             tz_aware=True,
             read_preference=ReadPreference.SECONDARY_PREFERRED,
