@@ -60,6 +60,7 @@ class MongoConnection(mongokit.Connection):
     def __init__(self, db_prefix, *args, **kwargs):
         super(MongoConnection, self).__init__(*args, **kwargs)
         self.db_prefix = db_prefix
+        log.info('Creating connection: args=%s kwargs=%s', args, kwargs)
 
     def get_db(self, db_name):
         return getattr(self, '%s%s' % (self.db_prefix, db_name))
