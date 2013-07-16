@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import logging
+import urlparse
 
 import mongokit
 
@@ -76,7 +77,9 @@ class MongoConnection(mongokit.Connection):
 class SingleDbConnection(MongoConnection):
 
     def __init__(self, db_name, db_prefix, uri, *args, **kwargs):
-        uri = '%s/%s%s' % (uri, db_prefix, db_name)
+        uri = list(urlparse.urlsplit(uri))
+        uri[2] = db_prefix + db_name
+        uri = urlparse.urlunsplit(uri)
         super(SingleDbConnection, self).__init__(db_prefix, uri, *args,
                                                  **kwargs)
         self.db_name = db_name
