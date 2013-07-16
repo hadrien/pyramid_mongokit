@@ -1,3 +1,16 @@
+0.0.9
+-----
+
+* Add logging info when creating a connection
+* Fix URI building issue (#2)
+* Add prefixed_database_names method on MongoConnection
+
+0.0.8
+-----
+
+* Better packaging which avoid downloading sphinx.
+* MongoConnection.get_db, db_name has not a default value anymore.
+
 0.0.6
 -----
 
