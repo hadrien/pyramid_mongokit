@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import logging
+import urlparse
 
 import mongokit
 
@@ -24,7 +25,7 @@ def includeme(config):
         connection = SingleDbConnection(
             os.environ['MONGO_DB_NAME'],
             db_prefix,
-            '%s' % os.environ['MONGO_URI'],
+            os.environ['MONGO_URI'],
             auto_start_request=False,
             tz_aware=True,
             read_preference=ReadPreference.SECONDARY_PREFERRED,
@@ -59,6 +60,7 @@ class MongoConnection(mongokit.Connection):
     def __init__(self, db_prefix, *args, **kwargs):
         super(MongoConnection, self).__init__(*args, **kwargs)
         self.db_prefix = db_prefix
+        log.info('Creating connection: args=%s kwargs=%s', args, kwargs)
 
     def get_db(self, db_name):
         return getattr(self, '%s%s' % (self.db_prefix, db_name))
@@ -76,7 +78,9 @@ class MongoConnection(mongokit.Connection):
 class SingleDbConnection(MongoConnection):
 
     def __init__(self, db_name, db_prefix, uri, *args, **kwargs):
-        uri = '%s/%s%s' % (uri, db_prefix, db_name)
+        uri = list(urlparse.urlsplit(uri))
+        uri[2] = db_prefix + db_name
+        uri = urlparse.urlunsplit(uri)
         super(SingleDbConnection, self).__init__(db_prefix, uri, *args,
                                                  **kwargs)
         self.db_name = db_name
