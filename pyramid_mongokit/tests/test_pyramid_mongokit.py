@@ -33,14 +33,27 @@ class Test(unittest.TestCase):
 
         register_document(registry, document_cls)
 
-    def test_mongo_connection(self):
+    @mock.patch('pyramid_mongokit.get_mongo_connection')
+    def test_mongo_connection(self, m_get_mongo_connection):
         from pyramid_mongokit import mongo_connection
 
         request = mock.Mock()
 
         self.assertEqual(
-            request.registry.getUtility.return_value,
-            mongo_connection(request)
+            mongo_connection(request),
+            m_get_mongo_connection.return_value,
+            )
+
+        # 1. Mongo client was retrived from request's registry
+        m_get_mongo_connection.assert_called_once_with(request.registry)
+
+        # 2. Method start_request of mongo client was called
+        m_get_mongo_connection.return_value.start_request.assert_called_once_with()
+
+        # 3. Method end_request of mongo client was registered as a callback for
+        # end of request processing
+        request.add_finished_callback.assert_called_once_with(
+            m_get_mongo_connection.return_value.end_request,
             )
 
     def test_mongo_db(self):
@@ -52,20 +65,6 @@ class Test(unittest.TestCase):
             request.mongo_connection.db,
             mongo_db(request)
             )
-
-    def test_begin_request(self):
-        from pyramid_mongokit import begin_request
-
-        event = mock.Mock()
-
-        begin_request(event)
-
-    def test_end_request(self):
-        from pyramid_mongokit import end_request
-
-        request = mock.Mock()
-
-        end_request(request)
 
     @mock.patch('os.environ')
     def test_no_db_name(self, os_environ):

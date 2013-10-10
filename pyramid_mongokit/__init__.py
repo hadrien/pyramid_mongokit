@@ -8,7 +8,6 @@ import mongokit
 from pymongo import ReadPreference
 
 from pyramid.decorator import reify
-from pyramid.events import NewRequest
 
 from zope.interface import Interface, implementer
 
@@ -46,7 +45,6 @@ def includeme(config):
     config.add_request_method(mongo_connection, 'mongo_connection',
                               reify=True)
 
-    config.add_subscriber(begin_request, NewRequest)
     log.info('Mongo connection configured...')
 
 
@@ -114,7 +112,14 @@ def get_mongo_connection(registry):
 
 
 def mongo_connection(request):
-    return get_mongo_connection(request.registry)
+    """This method is dedicated to be reified.
+    It ensure that current thread or greenlet always use the same socket until
+    request processing is over.
+    """
+    mongo_client = get_mongo_connection(request.registry)
+    mongo_client.start_request()
+    request.add_finished_callback(mongo_client.end_request)
+    return mongo_client
 
 
 def mongo_db(request, db_name=False):
@@ -122,12 +127,3 @@ def mongo_db(request, db_name=False):
     if db_name:
         return conn.get_db(db_name)
     return conn.db
-
-
-def begin_request(event):
-    event.request.mongo_connection.start_request()
-    event.request.add_finished_callback(end_request)
-
-
-def end_request(request):
-    request.mongo_connection.end_request()
