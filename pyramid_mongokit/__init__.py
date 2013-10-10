@@ -46,6 +46,13 @@ def includeme(config):
     config.add_request_method(mongo_connection, 'mongo_connection',
                               reify=True)
 
+    config.add_directive('register_document', directive_register_document,
+                         action_wrap=False)
+    config.add_directive('generate_index', directive_generate_index,
+                         action_wrap=False)
+    config.add_directive('get_mongo_connection', directive_mongo_connection,
+                         action_wrap=False)
+
     config.add_subscriber(begin_request, NewRequest)
     log.info('Mongo connection configured...')
 
@@ -98,15 +105,28 @@ class SingleDbConnection(MongoConnection):
                                                        collection)
 
 
+def directive_generate_index(config, document_cls, db_name='',
+                             collection=None):
+    generate_index(config.registry, document_cls, db_name, collection)
+
+
 def generate_index(registry, document_cls, db_name='', collection=None):
     mongo_connection = get_mongo_connection(registry)
     mongo_connection.generate_index(document_cls, db_name=db_name,
                                     collection=collection)
 
 
+def directive_register_document(config, document_cls):
+    register_document(config.registry, document_cls)
+
+
 def register_document(registry, document_cls):
     mongo_connection = get_mongo_connection(registry)
     mongo_connection.register(document_cls)
+
+
+def directive_mongo_connection(config):
+    return get_mongo_connection(config.registry)
 
 
 def get_mongo_connection(registry):
@@ -120,8 +140,11 @@ def mongo_connection(request):
 def mongo_db(request, db_name=False):
     conn = request.mongo_connection
     if db_name:
-        return conn.get_db(db_name)
-    return conn.db
+        db = conn.get_db(db_name)
+    else:
+        db = conn.db
+
+    return db
 
 
 def begin_request(event):
