@@ -1,3 +1,12 @@
+0.1
+---
+
+* Use MongoReplicaSetClient when specified by mongo uri.
+* Mongo Session lazily opened.
+* Add config directives to register and index documents and to get mongo
+  connection.
+
+
 0.0.6
 -----
 
