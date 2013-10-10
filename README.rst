@@ -1,9 +1,9 @@
 pyramid_mongokit
 ################
 
-A simple pyramid extension which register a mongokit mongo connection as an
-attribute to request.
+A simple Pyramid extension that registers a mongokit connection as an
+attribute of the request object
 
-If provided as environment variables, ``MONGO_DB_PRFIX`` will be use as
+If provided as environment variables, ``MONGO_DB_PREFIX`` will be used as
 prefix for any databases and ``MONGO_DB_NAME`` for database name.
 
