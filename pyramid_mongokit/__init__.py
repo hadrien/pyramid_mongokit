@@ -6,9 +6,9 @@ import urlparse
 import mongokit
 
 from pymongo import ReadPreference
+from pymongo.uri_parser import parse_uri
 
 from pyramid.decorator import reify
-from pyramid.events import NewRequest
 
 from zope.interface import Interface, implementer
 
@@ -21,24 +21,41 @@ def includeme(config):
     log.info('Configure mongokit connection...')
     db_prefix = os.environ.get('MONGO_DB_PREFIX', '')
 
+    mongo_uri = os.environ['MONGO_URI']
+    res = parse_uri(mongo_uri)
+
+    params = {
+        'auto_start_request': False,
+        'tz_aware': True,
+        'read_preference': ReadPreference.SECONDARY_PREFERRED,
+        }
+
+    # Udpate params with options contained in uri in order to ensure their
+    # use for mongo_client initialization
+    params.update(res['options'])
+
     if 'MONGO_DB_NAME' in os.environ:
-        connection = SingleDbConnection(
+        if 'replicaset' in params:
+            cls = ReplicasetSingleDbConnection
+        else:
+            cls = SingleDbConnection
+
+        connection = cls(
             os.environ['MONGO_DB_NAME'],
             db_prefix,
-            os.environ['MONGO_URI'],
-            auto_start_request=False,
-            tz_aware=True,
-            read_preference=ReadPreference.SECONDARY_PREFERRED,
-            )
+            mongo_uri,
+            **params)
+
         config.add_request_method(mongo_db, 'mongo_db', reify=True)
     else:
-        connection = MongoConnection(
+        if 'replicaset' in params:
+            cls = ReplicasetMongoConnection
+        else:
+            cls = MongoConnection
+        connection = cls(
             db_prefix,
-            os.environ['MONGO_URI'],
-            auto_start_request=False,
-            tz_aware=True,
-            read_preference=ReadPreference.SECONDARY_PREFERRED,
-            )
+            mongo_uri,
+            **params)
         config.add_request_method(mongo_db, 'get_mongo_db')
 
     config.registry.registerUtility(connection)
@@ -46,7 +63,6 @@ def includeme(config):
     config.add_request_method(mongo_connection, 'mongo_connection',
                               reify=True)
 
-    config.add_subscriber(begin_request, NewRequest)
     log.info('Mongo connection configured...')
 
 
@@ -54,13 +70,10 @@ class IMongoConnection(Interface):
     pass
 
 
-@implementer(IMongoConnection)
-class MongoConnection(mongokit.Connection):
+class MongoConnectionMixin(object):
 
     def __init__(self, db_prefix, *args, **kwargs):
-        super(MongoConnection, self).__init__(*args, **kwargs)
         self.db_prefix = db_prefix
-        log.info('Creating connection: args=%s kwargs=%s', args, kwargs)
 
     def get_db(self, db_name):
         return getattr(self, '%s%s' % (self.db_prefix, db_name))
@@ -74,15 +87,17 @@ class MongoConnection(mongokit.Connection):
                 if name.startswith(self.db_prefix))
 
 
-@implementer(IMongoConnection)
-class SingleDbConnection(MongoConnection):
+def get_uri_with_db_name(uri, db_prefix, db_name):
+        res = list(urlparse.urlsplit(uri))
+        res[2] = db_prefix + db_name
+        return urlparse.urlunsplit(res)
 
-    def __init__(self, db_name, db_prefix, uri, *args, **kwargs):
-        uri = list(urlparse.urlsplit(uri))
-        uri[2] = db_prefix + db_name
-        uri = urlparse.urlunsplit(uri)
-        super(SingleDbConnection, self).__init__(db_prefix, uri, *args,
-                                                 **kwargs)
+
+class SingleDbConnectionMixin(MongoConnectionMixin):
+
+    def __init__(self, db_prefix, db_name, *args, **kwargs):
+        super(SingleDbConnectionMixin, self).__init__(db_prefix, *args,
+                                                      **kwargs)
         self.db_name = db_name
 
     @reify
@@ -90,12 +105,58 @@ class SingleDbConnection(MongoConnection):
         return self.get_db(self.db_name)
 
     def get_db(self, db_name=None):
-        return super(SingleDbConnection, self).get_db(self.db_name)
+        return super(SingleDbConnectionMixin, self).get_db(self.db_name)
 
     def generate_index(self, document_cls, db_name=None, collection=None):
-        super(SingleDbConnection, self).generate_index(document_cls,
-                                                       self.db_name,
-                                                       collection)
+        super(SingleDbConnectionMixin, self).generate_index(document_cls,
+                                                            self.db_name,
+                                                            collection)
+
+
+@implementer(IMongoConnection)
+class MongoConnection(mongokit.Connection, MongoConnectionMixin):
+    def __init__(self, db_prefix, *args, **kwargs):
+        log.info('Creating SingleDbConnection: args=%s kwargs=%s',
+                 args, kwargs)
+        MongoConnectionMixin.__init__(self, db_prefix, *args, **kwargs)
+        mongokit.Connection.__init__(self, *args, **kwargs)
+
+
+@implementer(IMongoConnection)
+class SingleDbConnection(mongokit.Connection, SingleDbConnectionMixin):
+    def __init__(self, db_name, db_prefix, uri, *args, **kwargs):
+        log.info('Creating SingleDbConnection: args=%s kwargs=%s',
+                 args, kwargs)
+
+        uri = get_uri_with_db_name(uri, db_prefix, db_name)
+        SingleDbConnectionMixin.__init__(self, db_name, db_prefix, *args,
+                                         **kwargs)
+
+        mongokit.Connection.__init__(self, uri, *args, **kwargs)
+
+
+@implementer(IMongoConnection)
+class ReplicasetMongoConnection(mongokit.ReplicaSetConnection, MongoConnectionMixin):
+    def __init__(self, db_prefix, *args, **kwargs):
+        log.info('Creating ReplicasetMongoConnection: args=%s kwargs=%s',
+                 args, kwargs)
+        MongoConnectionMixin.__init__(self, db_prefix, *args, **kwargs)
+
+        mongokit.ReplicaSetConnection.__init__(self, *args, **kwargs)
+
+
+@implementer(IMongoConnection)
+class ReplicasetSingleDbConnection(mongokit.ReplicaSetConnection, SingleDbConnectionMixin):
+    def __init__(self, db_name, db_prefix, uri, *args, **kwargs):
+        log.info('Creating ReplicasetSingleDbConnection: args=%s kwargs=%s',
+                 args, kwargs)
+
+        uri = get_uri_with_db_name(uri, db_prefix, db_name)
+
+        SingleDbConnectionMixin.__init__(self, db_name, db_prefix, *args,
+                                         **kwargs)
+
+        mongokit.ReplicaSetConnection.__init__(self, uri, *args, **kwargs)
 
 
 def generate_index(registry, document_cls, db_name='', collection=None):
@@ -114,7 +175,18 @@ def get_mongo_connection(registry):
 
 
 def mongo_connection(request):
-    return get_mongo_connection(request.registry)
+    """This method is dedicated to be reified.
+    It ensure that current thread or greenlet always use the same socket until
+    request processing is over.
+    """
+    mongo_client = get_mongo_connection(request.registry)
+    mongo_client.start_request()
+    request.add_finished_callback(end_request)
+    return mongo_client
+
+
+def end_request(request):
+    request.mongo_connection.end_request()
 
 
 def mongo_db(request, db_name=False):
@@ -122,12 +194,3 @@ def mongo_db(request, db_name=False):
     if db_name:
         return conn.get_db(db_name)
     return conn.db
-
-
-def begin_request(event):
-    event.request.mongo_connection.start_request()
-    event.request.add_finished_callback(end_request)
-
-
-def end_request(request):
-    request.mongo_connection.end_request()
