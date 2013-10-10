@@ -1,10 +1,12 @@
+import logging
+
 from datetime import datetime
 
 from bson.objectid import ObjectId
 
 import mongokit
 
-from pyramid_mongokit import register_document, generate_index
+log = logging.getLogger(__name__)
 
 
 class User(mongokit.Document):
@@ -48,22 +50,23 @@ def includeme_single_db_connection(config):
     """
     config.include('pyramid_mongokit')
 
-    register_document(config.registry, [User, UserGame])
+    config.register_document([User, UserGame])
 
-    generate_index(config.registry, User)
-    generate_index(config.registry, UserGame, collection='bingo')
-    generate_index(config.registry, UserGame, collection='scrabble')
+    config.generate_index(User)
+    config.generate_index(UserGame, collection='bingo')
+    config.generate_index(UserGame, collection='scrabble')
 
 
 def includeme_mongo_connection(config):
     config.include('pyramid_mongokit')
 
-    register_document(config.registry, [User, UserGame])
+    config.register_document([User, UserGame])
 
-    generate_index(config.registry, User, db_name='games')
-    generate_index(config.registry, UserGame, db_name='games',
-                   collection='bingo')
-    generate_index(config.registry, UserGame, db_name='games',
-                   collection='scrabble')
+    config.generate_index(User, db_name='games')
+    config.generate_index(UserGame, db_name='games', collection='bingo')
+    config.generate_index(UserGame, db_name='games', collection='scrabble')
 
-    generate_index(config.registry, User, db_name='another')
+    config.generate_index(User, db_name='another')
+
+    # We can access mongo_connection via config.get_mongo_connection:
+    config.get_mongo_connection()
