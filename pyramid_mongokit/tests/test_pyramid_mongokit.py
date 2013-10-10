@@ -74,16 +74,21 @@ class Test(unittest.TestCase):
         with self.assertRaises(KeyError):
             includeme(mock.Mock())
 
+    @mock._patch_dict(os.environ, {
+        'MONGO_URI': 'mongodb://localhost/?replicaSet=tests&use_greenlets=true'
+        })
     @mock.patch('pyramid_mongokit.mongokit.Connection.__init__')
     def test_uri_with_params(self, m_client):
-        os.environ['MONGO_URI'] = 'mongodb://localhost?replicaSet=tests'
         config = Configurator(settings={})
 
         config.include('pyramid_mongokit')
 
         m_client.assert_called_once_with(
-            'mongodb://localhost/pyramid_mongokit?replicaSet=tests',
+            'mongodb://localhost/pyramid_mongokit',
             # this will break if pymongo internals change, but it's the
             # simplest way to write a regression test that makes sense for #2
-            auto_start_request=False, tz_aware=True,
+            auto_start_request=False,
+            tz_aware=True,
+            replicaset="tests",
+            use_greenlets=True,
             read_preference=pymongo.ReadPreference.SECONDARY_PREFERRED)

@@ -6,6 +6,7 @@ import urlparse
 import mongokit
 
 from pymongo import ReadPreference
+from pymongo.uri_parser import parse_uri
 
 from pyramid.decorator import reify
 
@@ -20,23 +21,32 @@ def includeme(config):
     log.info('Configure mongokit connection...')
     db_prefix = os.environ.get('MONGO_DB_PREFIX', '')
 
+    mongo_uri = os.environ['MONGO_URI']
+    res = parse_uri(mongo_uri)
+
+    params = {
+        'auto_start_request': False,
+        'tz_aware': True,
+        'read_preference': ReadPreference.SECONDARY_PREFERRED,
+        }
+
+    # Udpate params with options contained in uri in order to ensure their
+    # use for mongo_client initialization
+    params.update(res['options'])
+
     if 'MONGO_DB_NAME' in os.environ:
         connection = SingleDbConnection(
             os.environ['MONGO_DB_NAME'],
             db_prefix,
-            os.environ['MONGO_URI'],
-            auto_start_request=False,
-            tz_aware=True,
-            read_preference=ReadPreference.SECONDARY_PREFERRED,
+            mongo_uri,
+            **params
             )
         config.add_request_method(mongo_db, 'mongo_db', reify=True)
     else:
         connection = MongoConnection(
             db_prefix,
-            os.environ['MONGO_URI'],
-            auto_start_request=False,
-            tz_aware=True,
-            read_preference=ReadPreference.SECONDARY_PREFERRED,
+            mongo_uri,
+            **params
             )
         config.add_request_method(mongo_db, 'get_mongo_db')
 
