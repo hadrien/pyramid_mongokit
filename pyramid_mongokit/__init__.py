@@ -57,7 +57,7 @@ def includeme(config):
             **params)
         config.add_request_method(mongo_db, 'get_mongo_db')
 
-    config.registry.registerUtility(connection)
+    config.registry.registerUtility(connection, name='mongo_connection')
 
     config.add_request_method(mongo_connection, 'mongo_connection',
                               reify=True)
@@ -191,7 +191,7 @@ def directive_mongo_connection(config):
 
 
 def get_mongo_connection(registry):
-    return registry.getUtility(IMongoConnection)
+    return registry.getUtility(IMongoConnection, u'mongo_connection')
 
 
 def mongo_connection(request):
