@@ -1,3 +1,9 @@
+0.1.1
+-----
+
+* Add name when registring utility to zope registry to be compatble with
+  zope.interface==4.1.0
+
 0.1
 ---
 
