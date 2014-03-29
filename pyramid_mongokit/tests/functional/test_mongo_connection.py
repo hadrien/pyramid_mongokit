@@ -69,8 +69,8 @@ class TestMongoConnection(unittest.TestCase):
                          mongo_db(request, db_name='slot'))
 
     def test_prefixed_database_name(self):
-        self.assertEqual([u'pm_test_another', u'pm_test_games'],
-                         list(self.mongo.prefixed_database_names()))
+        self.assertEqual({u'pm_test_another', u'pm_test_games'},
+                         set(self.mongo.prefixed_database_names()))
 
 
 class TestSingleDbConnection(unittest.TestCase):

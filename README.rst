@@ -1,5 +1,13 @@
+################
 pyramid_mongokit
 ################
+
+.. image:: https://travis-ci.org/hadrien/pyramid_mongokit.png?branch=master
+   :target: https://travis-ci.org/hadrien/pyramid_mongokit
+
+.. image:: https://pypip.in/d/pyramid_mongokit/badge.png
+   :target: https://crate.io/packages/pyramid_mongokit/
+
 
 A simple Pyramid extension that registers a mongokit connection as an
 attribute of the request object.
