@@ -6,9 +6,12 @@ from bson.objectid import ObjectId
 
 import mongokit
 
+from pyramid_mongokit import register
+
 log = logging.getLogger(__name__)
 
 
+@register()
 class User(mongokit.Document):
 
     __collection__ = 'user'
@@ -50,11 +53,11 @@ def includeme_single_db_connection(config):
     """
     config.include('pyramid_mongokit')
 
-    config.register_document([User, UserGame])
+    config.register_document([UserGame])
 
-    config.generate_index(User)
     config.generate_index(UserGame, collection='bingo')
     config.generate_index(UserGame, collection='scrabble')
+    config.scan(__name__)
 
 
 def includeme_mongo_connection(config):

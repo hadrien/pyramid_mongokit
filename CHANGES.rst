@@ -1,7 +1,18 @@
+Changes
+=======
+
+Development
+-----------
+
+* Add register decorator to register documents to mongokit and generate indexes
+  when doing a config.scan.
+* Add an introspectable for each registered document.
+
+
 0.1.1
 -----
 
-* Add name when registring utility to zope registry to be compatble with
+* Add name when registring utility to zope registry to be compatible with
   zope.interface==4.1.0
 
 0.1

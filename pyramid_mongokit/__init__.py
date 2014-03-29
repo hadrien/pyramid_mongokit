@@ -2,7 +2,9 @@ import os
 import logging
 import urlparse
 
+
 import mongokit
+import venusian
 
 from pymongo import ReadPreference
 from pymongo.uri_parser import parse_uri
@@ -61,10 +63,8 @@ def includeme(config):
 
     config.add_request_method(mongo_connection, 'mongo_connection',
                               reify=True)
-    config.add_directive('register_document', directive_register_document,
-                         action_wrap=False)
-    config.add_directive('generate_index', directive_generate_index,
-                         action_wrap=False)
+    config.add_directive('register_document', directive_register_document)
+    config.add_directive('generate_index', directive_generate_index)
     config.add_directive('get_mongo_connection', directive_mongo_connection,
                          action_wrap=False)
 
@@ -168,22 +168,45 @@ class ReplicasetSingleDbConnection(mongokit.ReplicaSetConnection,
 
 def directive_generate_index(config, document_cls, db_name='',
                              collection=None):
-    generate_index(config.registry, document_cls, db_name, collection)
+    db = generate_index(config.registry, document_cls, db_name, collection)
+    if config.introspection:
+        intr = config.introspector.get('Mongokit Documents', document_cls)
+        if intr:
+            intr['databases'].append(db)
 
 
 def generate_index(registry, document_cls, db_name='', collection=None):
     mongo_connection = get_mongo_connection(registry)
     mongo_connection.generate_index(document_cls, db_name=db_name,
                                     collection=collection)
+    return mongo_connection.get_db(db_name)
 
 
-def directive_register_document(config, document_cls):
-    register_document(config.registry, document_cls)
+def directive_register_document(config, document_cls_or_list, **kwargs):
+    register_document(config.registry, document_cls_or_list)
+
+    if config.introspection:
+
+        if not isinstance(document_cls_or_list, (list, tuple)):
+            document_cls_or_list = (document_cls_or_list, )
+
+        for document_cls in document_cls_or_list:
+            intr = config.introspector.get('Mongokit Documents', document_cls)
+            if not intr:
+                intr = config.introspectable(
+                    category_name='Mongokit Documents',
+                    discriminator=document_cls,
+                    title=document_cls,
+                    type_name='Document',
+                )
+                intr['databases'] = []
+                config.introspector.add(intr)
+            config.action(document_cls, introspectables=(intr, ))
 
 
-def register_document(registry, document_cls):
+def register_document(registry, document_cls_or_list):
     mongo_connection = get_mongo_connection(registry)
-    mongo_connection.register(document_cls)
+    mongo_connection.register(document_cls_or_list)
 
 
 def directive_mongo_connection(config):
@@ -214,3 +237,24 @@ def mongo_db(request, db_name=False):
     if db_name:
         return conn.get_db(db_name)
     return conn.db
+
+
+class register(object):
+    """Decorator to register document to mongokit while doing config.scan"""
+
+    def __init__(self, generate_index=True, **settings):
+        self.__dict__.update(settings)
+        self.generate_index = generate_index
+
+    def __call__(self, document_cls):
+        settings = self.__dict__.copy()
+
+        def callback(context, name, cls):
+            config = context.config.with_package(info.module)
+            config.register_document(cls, **settings)
+            if settings['generate_index']:
+                config.generate_index(cls)
+
+        info = venusian.attach(document_cls, callback)
+        settings['_info'] = info.codeinfo
+        return document_cls
