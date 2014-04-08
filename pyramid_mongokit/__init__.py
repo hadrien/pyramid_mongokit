@@ -182,7 +182,7 @@ def generate_index(registry, document_cls, db_name='', collection=None):
     return mongo_connection.get_db(db_name)
 
 
-def directive_register_document(config, document_cls_or_list, **kwargs):
+def directive_register_document(config, document_cls_or_list):
     register_document(config.registry, document_cls_or_list)
 
     if config.introspection:
@@ -248,11 +248,12 @@ class register(object):
 
     def __call__(self, document_cls):
         settings = self.__dict__.copy()
+        generate_index = settings.pop('generate_index')
 
         def callback(context, name, cls):
             config = context.config.with_package(info.module)
             config.register_document(cls, **settings)
-            if settings['generate_index']:
+            if generate_index:
                 config.generate_index(cls)
 
         info = venusian.attach(document_cls, callback)
