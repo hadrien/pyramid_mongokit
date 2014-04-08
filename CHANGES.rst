@@ -4,6 +4,9 @@ Changelog
 Development
 -----------
 
+0.2
+---
+
 * Add register decorator to register documents to mongokit and generate indexes
   when doing a config.scan.
 * Add an introspectable for each registered document.
