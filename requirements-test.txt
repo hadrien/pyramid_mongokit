@@ -6,3 +6,4 @@ nosexcover
 webtest
 waitress
 yanc
+coveralls
